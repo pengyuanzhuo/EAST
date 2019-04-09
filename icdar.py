@@ -92,7 +92,7 @@ def check_and_validate_polys(polys, tags, xxx_todo_changeme):
     '''
     (h, w) = xxx_todo_changeme
     if polys.shape[0] == 0:
-        return polys
+        return polys, tags
     polys[:, :, 0] = np.clip(polys[:, :, 0], 0, w-1)
     polys[:, :, 1] = np.clip(polys[:, :, 1], 0, h-1)
 
@@ -102,10 +102,10 @@ def check_and_validate_polys(polys, tags, xxx_todo_changeme):
         p_area = polygon_area(poly)
         if abs(p_area) < 1:
             # print poly
-            print('invalid poly')
+            # print('invalid poly')
             continue
         if p_area > 0:
-            print('poly in wrong direction')
+            # print('poly in wrong direction')
             poly = poly[(0, 3, 2, 1), :]
         validated_polys.append(poly)
         validated_tags.append(tag)
@@ -601,7 +601,8 @@ def generator(input_size=512, batch_size=32,
                 im = cv2.imread(im_fn)
                 # print im_fn
                 h, w, _ = im.shape
-                txt_fn = im_fn.replace(os.path.basename(im_fn).split('.')[1], 'txt')
+                # txt_fn = im_fn.replace(os.path.basename(im_fn).split('.')[-1], 'txt')
+                txt_fn = os.path.splitext(im_fn)[0] + '.txt'
                 if not os.path.exists(txt_fn):
                     print('text file {} does not exists'.format(txt_fn))
                     continue
@@ -714,6 +715,7 @@ def generator(input_size=512, batch_size=32,
                     geo_maps = []
                     training_masks = []
             except Exception as e:
+                print(im_fn)
                 import traceback
                 traceback.print_exc()
                 continue
