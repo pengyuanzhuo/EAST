@@ -599,6 +599,8 @@ def generator(input_size=512, batch_size=32,
             try:
                 im_fn = image_list[i]
                 im = cv2.imread(im_fn)
+                if im is None:
+                    continue
                 # print im_fn
                 h, w, _ = im.shape
                 # txt_fn = im_fn.replace(os.path.basename(im_fn).split('.')[-1], 'txt')
