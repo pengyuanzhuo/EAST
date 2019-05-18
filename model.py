@@ -10,8 +10,12 @@ from nets import resnet_v1
 FLAGS = tf.app.flags.FLAGS
 
 
-def unpool(inputs):
-    return tf.image.resize_bilinear(inputs, size=[tf.shape(inputs)[1]*2,  tf.shape(inputs)[2]*2])
+def unpool(input,in_channel):
+    return tf.layers.conv2d_transpose(input, in_channel, 3, strides=2, padding="SAME")
+
+
+# def unpool(inputs):
+#     return tf.image.resize_bilinear(inputs, size=[tf.shape(inputs)[1]*2,  tf.shape(inputs)[2]*2])
 
 
 def mean_image_subtraction(images, means=[123.68, 116.78, 103.94]):
@@ -65,7 +69,8 @@ def model(images, weight_decay=1e-5, is_training=True):
                     c1_1 = slim.conv2d(tf.concat([g[i-1], f[i]], axis=-1), num_outputs[i], 1)
                     h[i] = slim.conv2d(c1_1, num_outputs[i], 3)
                 if i <= 2:
-                    g[i] = unpool(h[i])
+                    # g[i] = unpool(h[i])
+                    g[i] = unpool(h[i], in_channel=num_outputs[i])
                 else:
                     g[i] = slim.conv2d(h[i], num_outputs[i], 3)
                 print('Shape of h_{} {}, g_{} {}'.format(i, h[i].shape, i, g[i].shape))
