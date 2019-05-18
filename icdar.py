@@ -38,7 +38,7 @@ def get_images():
     img_dir = os.path.join(FLAGS.training_data_path, 'images')
     for ext in ['jpg', 'png', 'jpeg', 'JPG']:
         files.extend(glob.glob(
-            os.path.join(img_dir '*.{}'.format(ext))))
+            os.path.join(img_dir, '*.{}'.format(ext))))
     return files
 
 
