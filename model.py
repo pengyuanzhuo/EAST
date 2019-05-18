@@ -61,7 +61,8 @@ def model(images, weight_decay=1e-5, is_training=True):
                 print('Shape of f_{} {}'.format(i, f[i].shape))
             g = [None, None, None, None]
             h = [None, None, None, None]
-            num_outputs = [None, 128, 64, 32]
+            # num_outputs = [None, 128, 64, 32]
+            num_outputs = [2048, 128, 64, 32]
             for i in range(4):
                 if i == 0:
                     h[i] = f[i]

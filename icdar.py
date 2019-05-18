@@ -50,7 +50,7 @@ def load_annoataion(p):
     '''
     text_polys = []
     text_tags = []
-    with open(p, 'r') as f:
+    with open(p, 'r', encoding='utf-8') as f:
         reader = csv.reader(f)
         for line in reader:
             label = line[-1]
@@ -101,10 +101,10 @@ def check_and_validate_polys(polys, tags, xxx_todo_changeme):
         p_area = polygon_area(poly)
         if abs(p_area) < 1:
             # print poly
-            print('invalid poly')
+            # print('invalid poly')
             continue
         if p_area > 0:
-            print('poly in wrong direction')
+            # print('poly in wrong direction')
             poly = poly[(0, 3, 2, 1), :]
         validated_polys.append(poly)
         validated_tags.append(tag)
@@ -601,10 +601,10 @@ def generator(input_size=512, batch_size=32,
             try:
                 im_fn = image_list[i]
                 im_basename = os.path.basename(im_fn)
-                txt_name = im_basename + '.txt'
+                txt_name = os.path.splitext(im_basename)[0] + '.txt'
                 im = cv2.imread(im_fn)
                 if im is None:
-                    print('{} => None'.format(im_fn))
+                    # print('{} => None'.format(im_fn))
                     continue
                 # print im_fn
                 h, w, _ = im.shape
