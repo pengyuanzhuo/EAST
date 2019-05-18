@@ -14,7 +14,7 @@ import tensorflow as tf
 
 from data_util import GeneratorEnqueuer
 
-tf.app.flags.DEFINE_string('training_data_path', '/data/ocr/icdar2015/',
+tf.app.flags.DEFINE_string('training_data_path', '/workspace/dataset/ads_train/merge',
                            'training dataset to use')
 tf.app.flags.DEFINE_integer('max_image_large_side', 1280,
                             'max image size of training')
@@ -35,9 +35,10 @@ FLAGS = tf.app.flags.FLAGS
 
 def get_images():
     files = []
+    img_dir = os.path.join(FLAGS.training_data_path, 'images')
     for ext in ['jpg', 'png', 'jpeg', 'JPG']:
         files.extend(glob.glob(
-            os.path.join(FLAGS.training_data_path, '*.{}'.format(ext))))
+            os.path.join(img_dir '*.{}'.format(ext))))
     return files
 
 
@@ -49,8 +50,6 @@ def load_annoataion(p):
     '''
     text_polys = []
     text_tags = []
-    if not os.path.exists(p):
-        return np.array(text_polys, dtype=np.float32)
     with open(p, 'r') as f:
         reader = csv.reader(f)
         for line in reader:
@@ -584,9 +583,12 @@ def generator(input_size=512, batch_size=32,
               background_ratio=3./8,
               random_scale=np.array([0.5, 1, 2.0, 3.0]),
               vis=False):
+    img_dir = os.path.join(FLAGS.training_data_path, 'images')
+    label_dir = os.path.join(FLAGS.training_data_path, 'label')
+
     image_list = np.array(get_images())
     print('{} training images in {}'.format(
-        image_list.shape[0], FLAGS.training_data_path))
+        image_list.shape[0], img_dir))
     index = np.arange(0, image_list.shape[0])
     while True:
         np.random.shuffle(index)
@@ -598,10 +600,15 @@ def generator(input_size=512, batch_size=32,
         for i in index:
             try:
                 im_fn = image_list[i]
+                im_basename = os.path.basename(im_fn)
+                txt_name = im_basename + '.txt'
                 im = cv2.imread(im_fn)
+                if im is None:
+                    print('{} => None'.format(im_fn))
+                    continue
                 # print im_fn
                 h, w, _ = im.shape
-                txt_fn = im_fn.replace(os.path.basename(im_fn).split('.')[1], 'txt')
+                txt_fn = os.path.join(label_dir, txt_name)
                 if not os.path.exists(txt_fn):
                     print('text file {} does not exists'.format(txt_fn))
                     continue
@@ -609,8 +616,9 @@ def generator(input_size=512, batch_size=32,
                 text_polys, text_tags = load_annoataion(txt_fn)
 
                 text_polys, text_tags = check_and_validate_polys(text_polys, text_tags, (h, w))
-                # if text_polys.shape[0] == 0:
-                #     continue
+                if text_polys.shape[0] == 0:
+                    continue
+
                 # random scale this image
                 rd_scale = np.random.choice(random_scale)
                 im = cv2.resize(im, dsize=None, fx=rd_scale, fy=rd_scale)
