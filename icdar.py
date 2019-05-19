@@ -11,7 +11,7 @@ import matplotlib.patches as Patches
 from shapely.geometry import Polygon
 
 import tensorflow as tf
-
+from pool2d import pool2d
 from data_util import GeneratorEnqueuer
 
 tf.app.flags.DEFINE_string('training_data_path', '/workspace/dataset/ads_train/merge',
@@ -710,8 +710,17 @@ def generator(input_size=512, batch_size=32,
 
                 images.append(im[:, :, ::-1].astype(np.float32))
                 image_fns.append(im_fn)
-                score_maps.append(score_map[::4, ::4, np.newaxis].astype(np.float32))
-                geo_maps.append(geo_map[::4, ::4, :].astype(np.float32))
+                # score_maps.append(score_map[::4, ::4, np.newaxis].astype(np.float32))
+                score_maps.append(pool2d(score_map, 4, 4, 0)[:, :, np.newaxis].astype(np.float32))
+                # geo_maps.append(geo_map[::4, ::4, :].astype(np.float32))
+                geo_maps.append(
+                    np.stack([pool2d(geo_map[:, :, 0], 4, 4, 0).astype(np.float32),
+                              pool2d(geo_map[:, :, 1], 4, 4, 0).astype(np.float32),
+                              pool2d(geo_map[:, :, 2], 4, 4, 0).astype(np.float32),
+                              pool2d(geo_map[:, :, 3], 4, 4, 0).astype(np.float32),
+                              pool2d(geo_map[:, :, 4], 4, 4, 0).astype(np.float32)], axis=-1)
+                )
+                # geo_maps.append(pool2d(geo_map, 4, 4, 0)[:, :, np.newaxis].astype(np.float32))
                 training_masks.append(training_mask[::4, ::4, np.newaxis].astype(np.float32))
 
                 if len(images) == batch_size:
