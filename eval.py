@@ -2,6 +2,7 @@ import cv2
 import time
 import math
 import os
+import json
 import numpy as np
 import tensorflow as tf
 
@@ -194,8 +195,9 @@ def main(argv=None):
                             box_dict = {}
                             box_dict['text'] = 'abc'
                             box_dict['bboxes'] = [box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0], box[2, 1], box[3, 0], box[3, 1]]
+                            box_dict['bboxes'] = list(map(lambda x: int(x.tolist()), box_dict['bboxes']))
                             dump_result['texts'].append(box_dict)
-                            f_json.write('{}'.format(json.dumps(dump_result)))
+                            f_json.write('{}\n'.format(json.dumps(dump_result)))
 
                             f.write('{},{},{},{},{},{},{},{}\r\n'.format(
                                 box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0], box[2, 1], box[3, 0], box[3, 1],
