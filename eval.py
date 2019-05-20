@@ -36,7 +36,7 @@ def get_images():
     return files
 
 
-def resize_image(im, max_side_len=2400):
+def resize_image(im, max_side_len=768):
     '''
     resize image to a size multiple of 32 which is required by the network
     :param im: the resized image
@@ -149,7 +149,11 @@ def main(argv=None):
             saver.restore(sess, model_path)
 
             im_fn_list = get_images()
+            f_json = open(os.path.join(FLAGS.output_dir, 'result.json'), 'w')
+            dump_result = {}
             for im_fn in im_fn_list:
+                dump_result['url'] = im_fn
+                dump_result['texts'] = []
                 im = cv2.imread(im_fn)[:, :, ::-1]
                 start_time = time.time()
                 im_resized, (ratio_h, ratio_w) = resize_image(im)
@@ -182,8 +186,17 @@ def main(argv=None):
                         for box in boxes:
                             # to avoid submitting errors
                             box = sort_poly(box.astype(np.int32))
+
                             if np.linalg.norm(box[0] - box[1]) < 5 or np.linalg.norm(box[3]-box[0]) < 5:
                                 continue
+
+                            # json result
+                            box_dict = {}
+                            box_dict['text'] = 'abc'
+                            box_dict['bboxes'] = [box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0], box[2, 1], box[3, 0], box[3, 1]]
+                            dump_result['texts'].append(box_dict)
+                            f_json.write('{}'.format(json.dumps(dump_result)))
+
                             f.write('{},{},{},{},{},{},{},{}\r\n'.format(
                                 box[0, 0], box[0, 1], box[1, 0], box[1, 1], box[2, 0], box[2, 1], box[3, 0], box[3, 1],
                             ))
@@ -191,6 +204,8 @@ def main(argv=None):
                 if not FLAGS.no_write_images:
                     img_path = os.path.join(FLAGS.output_dir, os.path.basename(im_fn))
                     cv2.imwrite(img_path, im[:, :, ::-1])
+
+            f_json.close()
 
 if __name__ == '__main__':
     tf.app.run()
