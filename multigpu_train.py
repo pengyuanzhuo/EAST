@@ -24,6 +24,23 @@ FLAGS = tf.app.flags.FLAGS
 gpus = list(range(len(FLAGS.gpu_list.split(','))))
 
 
+class AverageMeter(object):
+    def __init__(self):
+        self.reset()
+
+    def reset(self):
+        self.val = 0
+        self.avg = 0
+        self.count = 0
+        self.sum = 0
+
+    def update(self, val, n=1):
+        self.val = val
+        self.count += n
+        self.sum += val * n
+        self.avg = self.sum / self.count
+
+
 def tower_loss(images, score_maps, geo_maps, training_masks, reuse_variables=None):
     # Build inference graph
     with tf.variable_scope(tf.get_variable_scope(), reuse=reuse_variables):
@@ -149,12 +166,15 @@ def main(argv=None):
                                          batch_size=FLAGS.batch_size_per_gpu * len(gpus))
 
         start = time.time()
+        batch_size = FLAGS.batch_size_per_gpu * len(gpus)
+        train_loss = AverageMeter()
         for step in range(FLAGS.max_steps):
             data = next(data_generator)
             ml, tl, _ = sess.run([model_loss, total_loss, train_op], feed_dict={input_images: data[0],
                                                                                 input_score_maps: data[2],
                                                                                 input_geo_maps: data[3],
                                                                                 input_training_masks: data[4]})
+            train_loss.update(tl, batch_size)
             if np.isnan(tl):
                 print('Loss diverged, stop training')
                 break
@@ -163,8 +183,8 @@ def main(argv=None):
                 avg_time_per_step = (time.time() - start)/10
                 avg_examples_per_second = (10 * FLAGS.batch_size_per_gpu * len(gpus))/(time.time() - start)
                 start = time.time()
-                print('Step {:06d}, model loss {:.4f}, total loss {:.4f}, {:.2f} seconds/step, {:.2f} examples/second'.format(
-                    step, ml, tl, avg_time_per_step, avg_examples_per_second))
+                print('Step {:06d}, model loss {:.4f}, total loss {:.4f}({:.4f}), {:.2f} seconds/step, {:.2f} examples/second'.format(
+                    step, ml, train_loss.val, train_loss.avg, avg_time_per_step, avg_examples_per_second))
 
             if step % FLAGS.save_checkpoint_steps == 0:
                 saver.save(sess, FLAGS.checkpoint_path + 'model.ckpt', global_step=global_step)
