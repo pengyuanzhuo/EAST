@@ -212,6 +212,7 @@ def main(argv=None):
                     val_loss.update(val_tl, batch_size)
                     print('val loss {:.4f}({:.4f})'.format(val_loss.var, val_loss.avg))
                 if val_loss.avg < best_loss:
+                    best_loss = val_loss.avg
                     print('best model, saving...')
                     saver.save(sess, os.path.join(FLAGS.checkpoint_path, 'best') + '/model.ckpt', global_step=global_step)
 
