@@ -14,8 +14,7 @@ import tensorflow as tf
 from pool2d import pool2d
 from data_util import GeneratorEnqueuer
 
-tf.app.flags.DEFINE_string('training_data_path', '/workspace/dataset/ads_train/merge',
-                           'training dataset to use')
+
 tf.app.flags.DEFINE_integer('max_image_large_side', 1280,
                             'max image size of training')
 tf.app.flags.DEFINE_integer('max_text_size', 800,
@@ -33,9 +32,8 @@ tf.app.flags.DEFINE_string('geometry', 'RBOX',
 FLAGS = tf.app.flags.FLAGS
 
 
-def get_images():
+def get_images(img_dir):
     files = []
-    img_dir = os.path.join(FLAGS.training_data_path, 'images')
     for ext in ['jpg', 'png', 'jpeg', 'JPG']:
         files.extend(glob.glob(
             os.path.join(img_dir, '*.{}'.format(ext))))
@@ -579,18 +577,19 @@ def generate_rbox(im_size, polys, tags):
     return score_map, geo_map, training_mask
 
 
-def generator(input_size=512, batch_size=32,
+def generator(data_dir, is_training=True, input_size=512, batch_size=32,
               background_ratio=3./8,
               random_scale=np.array([0.5, 1, 2.0, 3.0]),
               vis=False):
-    img_dir = os.path.join(FLAGS.training_data_path, 'images')
-    label_dir = os.path.join(FLAGS.training_data_path, 'label')
+    img_dir = os.path.join(data_dir, 'images')
+    label_dir = os.path.join(data_dir, 'label')
 
-    image_list = np.array(get_images())
-    print('{} training images in {}'.format(
+    image_list = np.array(get_images(img_dir))
+    print('{} images in {}'.format(
         image_list.shape[0], img_dir))
     index = np.arange(0, image_list.shape[0])
-    while True:
+    loop = True
+    while loop:
         np.random.shuffle(index)
         images = []
         image_fns = []
@@ -734,6 +733,9 @@ def generator(input_size=512, batch_size=32,
                 import traceback
                 traceback.print_exc()
                 continue
+
+        if not is_training:
+            loop = False
 
 
 def get_batch(num_workers, **kwargs):

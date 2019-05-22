@@ -3,6 +3,11 @@ import numpy as np
 import tensorflow as tf
 from tensorflow.contrib import slim
 
+
+tf.app.flags.DEFINE_string('training_data_path', '/workspace/dataset/ads_train/train',
+                           'training dataset to use')
+tf.app.flags.DEFINE_string('val_data_path', '/workspace/dataset/ads_train/val',
+                           'val dataset to use')
 tf.app.flags.DEFINE_integer('input_size', 512, '')
 tf.app.flags.DEFINE_integer('batch_size_per_gpu', 14, '')
 tf.app.flags.DEFINE_integer('num_readers', 8, '')
@@ -161,19 +166,28 @@ def main(argv=None):
             if FLAGS.pretrained_model_path is not None:
                 variable_restore_op(sess)
 
-        data_generator = icdar.get_batch(num_workers=FLAGS.num_readers,
+        train_generator = icdar.get_batch(num_workers=FLAGS.num_readers,
+                                         data_dir=FLAGS.training_data_path,
+                                         is_training=True,
                                          input_size=FLAGS.input_size,
                                          batch_size=FLAGS.batch_size_per_gpu * len(gpus))
+
+        val_generator = icdar.get_batch(num_workers=FLAGS.num_readers,
+                                        data_dir=FLAGS.val_data_path,
+                                        is_training=False,
+                                        input_size=FLAGS.input_size,
+                                        batch_size=FLAGS.batch_size_per_gpu * len(gpus))
 
         start = time.time()
         batch_size = FLAGS.batch_size_per_gpu * len(gpus)
         train_loss = AverageMeter()
+        best_loss = float("inf")
         for step in range(FLAGS.max_steps):
-            data = next(data_generator)
-            ml, tl, _ = sess.run([model_loss, total_loss, train_op], feed_dict={input_images: data[0],
-                                                                                input_score_maps: data[2],
-                                                                                input_geo_maps: data[3],
-                                                                                input_training_masks: data[4]})
+            train_data = next(train_generator)
+            ml, tl, _ = sess.run([model_loss, total_loss, train_op], feed_dict={input_images: train_data[0],
+                                                                                input_score_maps: train_data[2],
+                                                                                input_geo_maps: train_data[3],
+                                                                                input_training_masks: train_data[4]})
             train_loss.update(tl, batch_size)
             if np.isnan(tl):
                 print('Loss diverged, stop training')
@@ -188,12 +202,24 @@ def main(argv=None):
 
             if step % FLAGS.save_checkpoint_steps == 0:
                 saver.save(sess, FLAGS.checkpoint_path + 'model.ckpt', global_step=global_step)
+                # val
+                val_loss = AverageMeter()
+                for val_data in val_generator:
+                    val_ml, val_tl = sess.run([model_loss, total_loss], feed_dict={input_images: val_data[0],
+                                                                                   input_score_maps: val_data[2],
+                                                                                   input_geo_maps: val_data[3],
+                                                                                   input_training_masks: val_data[4]})
+                    val_loss.update(val_tl, batch_size)
+                    print('val loss {:.4f}({:.4f})'.format(val_loss.var, val_loss.avg))
+                if val_loss.avg < best_loss:
+                    print('best model, saving...')
+                    saver.save(sess, os.path.join(FLAGS.checkpoint_path, 'best') + '/model.ckpt', global_step=global_step)
 
             if step % FLAGS.save_summary_steps == 0:
-                _, tl, summary_str = sess.run([train_op, total_loss, summary_op], feed_dict={input_images: data[0],
-                                                                                             input_score_maps: data[2],
-                                                                                             input_geo_maps: data[3],
-                                                                                             input_training_masks: data[4]})
+                _, tl, summary_str = sess.run([train_op, total_loss, summary_op], feed_dict={input_images: train_data[0],
+                                                                                             input_score_maps: train_data[2],
+                                                                                             input_geo_maps: train_data[3],
+                                                                                             input_training_masks: train_data[4]})
                 summary_writer.add_summary(summary_str, global_step=step)
 
 if __name__ == '__main__':
